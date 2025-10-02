@@ -9,7 +9,7 @@
   "author": "Alex Woodman",
   "license": "MIT",
   "bin": {
-    "my-cli": "./dist/index.js"
+    "qa-kit": "./dist/index.js"
   },
   "files": [
     "dist"
