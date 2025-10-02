@@ -1,0 +1,30 @@
+{
+  "name": "qa-kit",
+  "version": "1.0.0",
+  "description": "Semi-automated quality assurance system which matches code to high quality human curated samples in order to flag concerns.",
+  "main": "index.js",
+  "keywords": [
+    "quality"
+  ],
+  "author": "Alex Woodman",
+  "license": "MIT",
+  "bin": {
+    "my-cli": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.2"
+  },
+  "dependencies": {
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
