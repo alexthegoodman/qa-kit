@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+import * as dotenv from "dotenv";
+dotenv.config();
+
 export interface QAConfig {
   contextLines: number; // number of lines of context to include around changes
   maxDiffLines: number; // maximum number of lines to include in a single diff
