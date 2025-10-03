@@ -1,6 +1,6 @@
 # QA Kit
 
-Semi-automated quality assurance system which matches code cahnges to high quality human curated (often handcrafted) samples in order to flag concerns.
+Semi-automated quality assurance system which matches code changes to high quality human curated (often handcrafted) samples in order to flag concerns.
 
 ## Features
 
