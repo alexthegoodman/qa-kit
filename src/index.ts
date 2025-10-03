@@ -374,7 +374,7 @@ async function main() {
         `  Analyzing against ${snippet.name}... Relevance Score: ${match.relevanceScore}`
       );
 
-      if (match.relevanceScore < 50) {
+      if (match.relevanceScore < 80) {
         console.info(
           `    Skipping low relevance match (${match.relevanceScore})`
         );
