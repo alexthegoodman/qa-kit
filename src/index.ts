@@ -108,9 +108,14 @@ async function getGitDiffs(
       return [];
     }
 
-    // Get unified diff with context
+    // Get unified diff with context (tracked files)
     const { stdout: diffOutput } = await execAsync(
       `git diff --unified=${contextLines} HEAD`
+    );
+
+    // Get untracked files
+    const { stdout: untrackedOutput } = await execAsync(
+      `git ls-files --others --exclude-standard`
     );
 
     // Parse diffs per file
@@ -137,6 +142,39 @@ async function getGitDiffs(
             file: filePath,
             diff: "diff --git" + section,
           });
+        }
+      }
+    }
+
+    // Add untracked files
+    const untrackedFiles = untrackedOutput.trim().split("\n").filter(Boolean);
+    for (const filePath of untrackedFiles) {
+      // Check if file should be ignored
+      const shouldIgnore = ignorePatterns.some((pattern) => {
+        const regexPattern = pattern
+          .replace(/\./g, "\\.")
+          .replace(/\*\*/g, ".*")
+          .replace(/\*/g, "[^/]*");
+        return new RegExp(`^${regexPattern}$`).test(filePath);
+      });
+
+      if (!shouldIgnore) {
+        // Read the entire file content as a diff
+        try {
+          const content = await fs.readFile(
+            path.join(process.cwd(), filePath),
+            "utf-8"
+          );
+          const lines = content
+            .split("\n")
+            .map((line, i) => `+${line}`)
+            .join("\n");
+          diffs.push({
+            file: filePath,
+            diff: `diff --git a/${filePath} b/${filePath}\nnew file\n--- /dev/null\n+++ b/${filePath}\n${lines}`,
+          });
+        } catch (error) {
+          console.warn(`Could not read untracked file ${filePath}`);
         }
       }
     }
@@ -303,51 +341,60 @@ async function main() {
   const results: QAResult[] = [];
 
   // Process each diff
-  //   for (const diff of diffsToProcess) {
-  //     console.info(`\nAnalyzing ${diff.file}...`);
+  for (const diff of diffsToProcess) {
+    console.info(`\nAnalyzing ${diff.file}...`);
 
-  //     // Truncate diff if too long
-  //     let diffContent = diff.diff;
-  //     const diffLines = diffContent.split("\n");
-  //     if (diffLines.length > config.maxDiffLines) {
-  //       diffContent = diffLines.slice(0, config.maxDiffLines).join("\n") + "\n... (truncated)";
-  //       diff.diff = diffContent;
-  //     }
+    // Truncate diff if too long
+    let diffContent = diff.diff;
+    const diffLines = diffContent.split("\n");
+    if (diffLines.length > config.maxDiffLines) {
+      diffContent =
+        diffLines.slice(0, config.maxDiffLines).join("\n") +
+        "\n... (truncated)";
+      diff.diff = diffContent;
+    }
 
-  //     // Match snippets
-  //     const matches = await matchSnippetsToDiff(diff, snippets, config.maxSnippetMatches);
-  //     console.info(`  Found ${matches.length} relevant snippets`);
+    // Match snippets
+    const matches = await matchSnippetsToDiff(
+      diff,
+      snippets,
+      config.maxSnippetMatches
+    );
+    console.info(`  Found ${matches.length} relevant snippets`);
 
-  //     // Analyze each match
-  //     const matchResults = [];
-  //     let overallStatus: "accepted" | "warning" | "rejected" = "accepted";
+    // Analyze each match
+    const matchResults = [];
+    let overallStatus: "accepted" | "warning" | "rejected" = "accepted";
 
-  //     for (const match of matches) {
-  //       const snippet = snippets.find((s) => s.name === match.snippetName);
-  //       if (!snippet) continue;
+    for (const match of matches) {
+      const snippet = snippets.find((s) => s.name === match.snippetName);
+      if (!snippet) continue;
 
-  //       console.info(`  Analyzing against ${snippet.name}...`);
-  //       const analysis = await analyzeMatch(diff, snippet);
+      console.info(`  Analyzing against ${snippet.name}...`);
+      const analysis = await analyzeMatch(diff, snippet);
 
-  //       matchResults.push({
-  //         snippetName: snippet.name,
-  //         commentary: analysis.commentary,
-  //       });
+      matchResults.push({
+        snippetName: snippet.name,
+        commentary: analysis.commentary,
+      });
 
-  //       // Update overall status (rejected > warning > accepted)
-  //       if (analysis.status === "rejected") {
-  //         overallStatus = "rejected";
-  //       } else if (analysis.status === "warning" && overallStatus !== "rejected") {
-  //         overallStatus = "warning";
-  //       }
-  //     }
+      // Update overall status (rejected > warning > accepted)
+      if (analysis.status === "rejected") {
+        overallStatus = "rejected";
+      } else if (
+        analysis.status === "warning" &&
+        overallStatus !== "rejected"
+      ) {
+        overallStatus = "warning";
+      }
+    }
 
-  //     results.push({
-  //       file: diff.file,
-  //       status: overallStatus,
-  //       matches: matchResults,
-  //     });
-  //   }
+    results.push({
+      file: diff.file,
+      status: overallStatus,
+      matches: matchResults,
+    });
+  }
 
   // Output results
   console.info("\n" + "=".repeat(60));
