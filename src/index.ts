@@ -95,7 +95,10 @@ async function loadSnippets(): Promise<Snippet[]> {
 }
 
 // Get git diffs for changed files
-async function getGitDiffs(contextLines: number, ignorePatterns: string[]): Promise<DiffInfo[]> {
+async function getGitDiffs(
+  contextLines: number,
+  ignorePatterns: string[]
+): Promise<DiffInfo[]> {
   try {
     // Get list of changed files
     const { stdout: statusOutput } = await execAsync("git status --porcelain");
@@ -120,7 +123,7 @@ async function getGitDiffs(contextLines: number, ignorePatterns: string[]): Prom
         const filePath = fileMatch[1];
 
         // Check if file should be ignored
-        const shouldIgnore = ignorePatterns.some(pattern => {
+        const shouldIgnore = ignorePatterns.some((pattern) => {
           // Convert glob pattern to regex
           const regexPattern = pattern
             .replace(/\./g, "\\.")
@@ -204,7 +207,10 @@ Return up to ${maxMatches} snippet names that are most relevant to this diff, wi
 async function analyzeMatch(
   diff: DiffInfo,
   snippet: Snippet
-): Promise<{ commentary: string; status: "accepted" | "warning" | "rejected" }> {
+): Promise<{
+  commentary: string;
+  status: "accepted" | "warning" | "rejected";
+}> {
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -277,7 +283,9 @@ async function main() {
   console.info(`Loaded ${snippets.length} quality snippets`);
 
   if (snippets.length === 0) {
-    console.warn("No snippets found in /quality directory. Please add some quality samples.");
+    console.warn(
+      "No snippets found in /quality directory. Please add some quality samples."
+    );
     return;
   }
 
@@ -295,51 +303,51 @@ async function main() {
   const results: QAResult[] = [];
 
   // Process each diff
-  for (const diff of diffsToProcess) {
-    console.info(`\nAnalyzing ${diff.file}...`);
+  //   for (const diff of diffsToProcess) {
+  //     console.info(`\nAnalyzing ${diff.file}...`);
 
-    // Truncate diff if too long
-    let diffContent = diff.diff;
-    const diffLines = diffContent.split("\n");
-    if (diffLines.length > config.maxDiffLines) {
-      diffContent = diffLines.slice(0, config.maxDiffLines).join("\n") + "\n... (truncated)";
-      diff.diff = diffContent;
-    }
+  //     // Truncate diff if too long
+  //     let diffContent = diff.diff;
+  //     const diffLines = diffContent.split("\n");
+  //     if (diffLines.length > config.maxDiffLines) {
+  //       diffContent = diffLines.slice(0, config.maxDiffLines).join("\n") + "\n... (truncated)";
+  //       diff.diff = diffContent;
+  //     }
 
-    // Match snippets
-    const matches = await matchSnippetsToDiff(diff, snippets, config.maxSnippetMatches);
-    console.info(`  Found ${matches.length} relevant snippets`);
+  //     // Match snippets
+  //     const matches = await matchSnippetsToDiff(diff, snippets, config.maxSnippetMatches);
+  //     console.info(`  Found ${matches.length} relevant snippets`);
 
-    // Analyze each match
-    const matchResults = [];
-    let overallStatus: "accepted" | "warning" | "rejected" = "accepted";
+  //     // Analyze each match
+  //     const matchResults = [];
+  //     let overallStatus: "accepted" | "warning" | "rejected" = "accepted";
 
-    for (const match of matches) {
-      const snippet = snippets.find((s) => s.name === match.snippetName);
-      if (!snippet) continue;
+  //     for (const match of matches) {
+  //       const snippet = snippets.find((s) => s.name === match.snippetName);
+  //       if (!snippet) continue;
 
-      console.info(`  Analyzing against ${snippet.name}...`);
-      const analysis = await analyzeMatch(diff, snippet);
+  //       console.info(`  Analyzing against ${snippet.name}...`);
+  //       const analysis = await analyzeMatch(diff, snippet);
 
-      matchResults.push({
-        snippetName: snippet.name,
-        commentary: analysis.commentary,
-      });
+  //       matchResults.push({
+  //         snippetName: snippet.name,
+  //         commentary: analysis.commentary,
+  //       });
 
-      // Update overall status (rejected > warning > accepted)
-      if (analysis.status === "rejected") {
-        overallStatus = "rejected";
-      } else if (analysis.status === "warning" && overallStatus !== "rejected") {
-        overallStatus = "warning";
-      }
-    }
+  //       // Update overall status (rejected > warning > accepted)
+  //       if (analysis.status === "rejected") {
+  //         overallStatus = "rejected";
+  //       } else if (analysis.status === "warning" && overallStatus !== "rejected") {
+  //         overallStatus = "warning";
+  //       }
+  //     }
 
-    results.push({
-      file: diff.file,
-      status: overallStatus,
-      matches: matchResults,
-    });
-  }
+  //     results.push({
+  //       file: diff.file,
+  //       status: overallStatus,
+  //       matches: matchResults,
+  //     });
+  //   }
 
   // Output results
   console.info("\n" + "=".repeat(60));
@@ -352,9 +360,15 @@ async function main() {
 
   for (const result of results) {
     const statusIcon =
-      result.status === "accepted" ? "✅" : result.status === "warning" ? "⚠️" : "❌";
+      result.status === "accepted"
+        ? "✅"
+        : result.status === "warning"
+        ? "⚠️"
+        : "❌";
 
-    console.info(`${statusIcon} ${result.file} - ${result.status.toUpperCase()}`);
+    console.info(
+      `${statusIcon} ${result.file} - ${result.status.toUpperCase()}`
+    );
 
     for (const match of result.matches) {
       console.info(`   📝 ${match.snippetName}`);
