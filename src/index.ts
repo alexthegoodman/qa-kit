@@ -15,6 +15,7 @@ export interface QAConfig {
   maxDiffLines: number; // maximum number of lines to include in a single diff
   maxSnippetMatches: number; // maximum number of snippet matches to return per diff
   maxDiffsPerRun: number; // maximum number of diffs to process in a single run
+  ignoreFiles: string[]; // file patterns to ignore during analysis
 }
 
 const defaultQAConfig: QAConfig = {
@@ -22,6 +23,7 @@ const defaultQAConfig: QAConfig = {
   maxDiffLines: 500,
   maxSnippetMatches: 3,
   maxDiffsPerRun: 3,
+  ignoreFiles: ["quality/**", "qa.json"],
 };
 
 interface Snippet {
@@ -93,7 +95,7 @@ async function loadSnippets(): Promise<Snippet[]> {
 }
 
 // Get git diffs for changed files
-async function getGitDiffs(contextLines: number): Promise<DiffInfo[]> {
+async function getGitDiffs(contextLines: number, ignorePatterns: string[]): Promise<DiffInfo[]> {
   try {
     // Get list of changed files
     const { stdout: statusOutput } = await execAsync("git status --porcelain");
@@ -115,10 +117,24 @@ async function getGitDiffs(contextLines: number): Promise<DiffInfo[]> {
     for (const section of diffSections) {
       const fileMatch = section.match(/a\/(.*?) b\//);
       if (fileMatch) {
-        diffs.push({
-          file: fileMatch[1],
-          diff: "diff --git" + section,
+        const filePath = fileMatch[1];
+
+        // Check if file should be ignored
+        const shouldIgnore = ignorePatterns.some(pattern => {
+          // Convert glob pattern to regex
+          const regexPattern = pattern
+            .replace(/\./g, "\\.")
+            .replace(/\*\*/g, ".*")
+            .replace(/\*/g, "[^/]*");
+          return new RegExp(`^${regexPattern}$`).test(filePath);
         });
+
+        if (!shouldIgnore) {
+          diffs.push({
+            file: filePath,
+            diff: "diff --git" + section,
+          });
+        }
       }
     }
 
@@ -266,7 +282,7 @@ async function main() {
   }
 
   // Get git diffs
-  const diffs = await getGitDiffs(config.contextLines);
+  const diffs = await getGitDiffs(config.contextLines, config.ignoreFiles);
   console.info(`Found ${diffs.length} changed files`);
 
   if (diffs.length === 0) {
