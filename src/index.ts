@@ -370,7 +370,17 @@ async function main() {
       const snippet = snippets.find((s) => s.name === match.snippetName);
       if (!snippet) continue;
 
-      console.info(`  Analyzing against ${snippet.name}...`);
+      console.info(
+        `  Analyzing against ${snippet.name}... Relevance Score: ${match.relevanceScore}`
+      );
+
+      if (match.relevanceScore < 50) {
+        console.info(
+          `    Skipping low relevance match (${match.relevanceScore})`
+        );
+        continue;
+      }
+
       const analysis = await analyzeMatch(diff, snippet);
 
       matchResults.push({
